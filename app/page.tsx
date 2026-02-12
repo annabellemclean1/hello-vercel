@@ -1,17 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
+/**
+ * Assignment #2: Gated Supabase Integration
+ * This version restores the original 'images' table fetching and styling
+ * while maintaining the required Google Auth protection.
+ */
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
-    const [items, setItems] = useState<any[]>([]);
+    const [images, setImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const getSession = async () => {
+        // 1. Handle initial session and auth state
+        const initAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setUser(session?.user ?? null);
             if (session?.user) {
@@ -21,15 +27,16 @@ export default function Home() {
             }
         };
 
-        getSession();
+        initAuth();
 
+        // 2. Listen for auth changes (Login/Logout)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event: AuthChangeEvent, session: Session | null) => {
                 setUser(session?.user ?? null);
                 if (session?.user) {
                     fetchData();
                 } else {
-                    setItems([]);
+                    setImages([]);
                     setLoading(false);
                 }
             }
@@ -38,21 +45,20 @@ export default function Home() {
         return () => subscription.unsubscribe();
     }, []);
 
+    // 3. Fetch data from the 'images' table (as per original code)
     const fetchData = async () => {
         setLoading(true);
         setError(null);
 
-        // Attempt to fetch from 'captions'
-        // If your table is named 'images' or something else, change the string below
         const { data, error: fetchError } = await supabase
-            .from('captions')
+            .from('images') // Restored table name to 'images'
             .select('*');
 
         if (fetchError) {
             console.error('Fetch error:', fetchError);
             setError(fetchError.message);
         } else {
-            setItems(data || []);
+            setImages(data || []);
         }
         setLoading(false);
     };
@@ -71,93 +77,118 @@ export default function Home() {
     };
 
     if (loading) return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50">
-            <div className="text-center font-medium text-gray-500 italic">Loading Gallery Content...</div>
+        <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+            <div className="text-zinc-500 animate-pulse font-medium">Loading Gallery...</div>
         </div>
     );
 
     return (
-        <main className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-6xl mx-auto">
-                <header className="flex justify-between items-center mb-10 border-b pb-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Image Gallery</h1>
-                        {user && <p className="text-sm text-gray-500 mt-1">Logged in as: {user.email}</p>}
-                    </div>
-                    {user ? (
-                        <button
-                            onClick={handleLogout}
-                            className="text-sm font-bold text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
-                        >
-                            Logout
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleLogin}
-                            className="bg-black text-white px-6 py-2 rounded-lg font-bold shadow-lg hover:opacity-80 transition-all"
-                        >
-                            Login with Google
-                        </button>
-                    )}
-                </header>
+        <main className="min-h-screen bg-zinc-50 px-6 py-12 dark:bg-zinc-950">
+            <div className="mx-auto max-w-6xl">
 
-                {!user ? (
-                    /* LOCKED STATE */
-                    <div className="text-center py-24 bg-white border-2 border-dashed rounded-3xl">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
-                            <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Authenticated Access Required</h2>
-                        <p className="text-gray-500 mb-8 max-w-sm mx-auto">Please sign in with your Google account to view the image records from Supabase.</p>
-                        <button
-                            onClick={handleLogin}
-                            className="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
-                        >
-                            Login to View
-                        </button>
-                    </div>
-                ) : (
-                    /* PROTECTED GALLERY CONTENT */
+                {/* Header Section */}
+                <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between border-b border-zinc-200 pb-8 dark:border-zinc-800">
                     <div>
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-mono">
-                                Error connecting to table: {error}
-                            </div>
-                        )}
+                        <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
+                            Supabase Gallery
+                        </h1>
+                        <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400">
+                            {user ? 'Authenticated: Rendering live data from the database.' : 'Protected: Please sign in to view content.'}
+                        </p>
+                    </div>
 
-                        {items.length === 0 && !error ? (
-                            <div className="text-center py-20 text-gray-400 border rounded-xl bg-white italic">
-                                No images found in the 'captions' table.
+                    <div className="mt-6 md:mt-0">
+                        {user ? (
+                            <div className="flex items-center gap-4">
+                <span className="text-xs font-mono text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded">
+                  {user.email}
+                </span>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-sm font-bold text-red-600 hover:underline"
+                                >
+                                    Sign Out
+                                </button>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {items.map((item) => (
-                                    <div key={item.id} className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-                                        <div className="aspect-4/3 bg-gray-200 overflow-hidden">
-                                            {item.url ? (
-                                                <img
-                                                    src={item.url}
-                                                    alt=""
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">No Image URL</div>
-                                            )}
-                                        </div>
-                                        <div className="p-6">
-                                            <h3 className="font-bold text-gray-900 text-xl mb-2">{item.title || 'Untitled'}</h3>
-                                            <p className="text-gray-600 text-sm leading-relaxed">{item.caption || 'No description provided.'}</p>
-                                            <div className="mt-4 pt-4 border-t border-gray-50 flex items-center text-[10px] font-mono text-gray-400">
-                                                <span>DB_ID: {item.id}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <button
+                                onClick={handleLogin}
+                                className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-bold text-zinc-50 shadow-lg transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
+                            >
+                                Sign in with Google
+                            </button>
                         )}
                     </div>
+                </div>
+
+                {/* Content Section */}
+                {!user ? (
+                    /* Locked UI */
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-sm text-center">
+                        <div className="mb-4 text-zinc-300">
+                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Content Gated</h2>
+                        <p className="mt-2 text-zinc-500 max-w-xs mx-auto">This route is protected. Authentication is required to fetch image data.</p>
+                    </div>
+                ) : (
+                    /* Gallery UI */
+                    <>
+                        {error && (
+                            <div className="mb-8 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                                <strong>Connection Error:</strong> {error}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                            {images.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02] hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                                >
+                                    {/* Image Preview */}
+                                    <div className="relative aspect-video w-full bg-zinc-100 dark:bg-zinc-800">
+                                        {item.url ? (
+                                            <img
+                                                src={item.url}
+                                                alt={item.title || 'Supabase entry'}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-zinc-400 italic text-sm">
+                                                No image available
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Card Content */}
+                                    <div className="flex flex-1 flex-col p-5">
+                                        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                                            {item.title || item.name || 'Untitled Entry'}
+                                        </h3>
+                                        <p className="mt-2 flex-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-3">
+                                            {item.description || item.caption || 'No description provided.'}
+                                        </p>
+
+                                        {/* ID Badge */}
+                                        <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                      <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-zinc-400">
+                        ID: {item.id}
+                      </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {images.length === 0 && !error && (
+                            <div className="mt-20 text-center">
+                                <p className="text-zinc-500 italic">No data found in the "images" table.</p>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </main>
