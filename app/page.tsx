@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 /**
  * Assignment #4: Mutating Data (Rating/Voting)
- * Table Schema:
- * - images: Contains image data (url, title, description)
- * - caption_votes: Stores individual upvotes/downvotes
- * - profiles: User profile information
+ * Updated to persist UI state (highlighting arrows) based on existing votes.
+ * Fixed import path to resolve compilation error.
  */
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
     const [images, setImages] = useState<any[]>([]);
+    const [userVotes, setUserVotes] = useState<Record<string, 'up' | 'down'>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [votingId, setVotingId] = useState<string | null>(null);
@@ -23,9 +22,10 @@ export default function Home() {
         const initAuth = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    fetchData();
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+                if (currentUser) {
+                    fetchData(currentUser.id);
                 } else {
                     setLoading(false);
                 }
@@ -40,11 +40,13 @@ export default function Home() {
         // Listen for Auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event: AuthChangeEvent, session: Session | null) => {
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    fetchData();
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+                if (currentUser) {
+                    fetchData(currentUser.id);
                 } else {
                     setImages([]);
+                    setUserVotes({});
                     setLoading(false);
                 }
             }
@@ -53,20 +55,34 @@ export default function Home() {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Fetch from the 'images' table
-    const fetchData = async () => {
+    // Fetch from the 'images' table and 'caption_votes' for the current user
+    const fetchData = async (userId: string) => {
         setLoading(true);
         setError(null);
         try {
-            const { data, error: fetchError } = await supabase
+            // 1. Fetch Images
+            const { data: imageData, error: fetchError } = await supabase
                 .from('images')
                 .select('*');
 
-            if (fetchError) {
-                setError(fetchError.message);
-            } else {
-                setImages(data || []);
-            }
+            if (fetchError) throw fetchError;
+
+            // 2. Fetch User's existing votes to persist UI state
+            const { data: voteData, error: voteError } = await supabase
+                .from('caption_votes')
+                .select('image_id, vote_type')
+                .eq('user_id', userId);
+
+            if (voteError) throw voteError;
+
+            // Convert vote array to a map for O(1) lookup: { image_id: 'up' }
+            const voteMap: Record<string, 'up' | 'down'> = {};
+            voteData?.forEach(v => {
+                voteMap[v.image_id] = v.vote_type;
+            });
+
+            setImages(imageData || []);
+            setUserVotes(voteMap);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -76,15 +92,14 @@ export default function Home() {
 
     /**
      * Mutation: Inserts a vote into 'caption_votes'
-     * Ensure user is logged in before calling this
      */
     const handleVote = async (imageId: string, voteType: 'up' | 'down') => {
         if (!user) return;
 
         setVotingId(imageId);
 
-        // Mutation: practice creating new rows
         try {
+            // Mutation: insert new row
             const { error: voteError } = await supabase
                 .from('caption_votes')
                 .insert([
@@ -98,7 +113,11 @@ export default function Home() {
             if (voteError) {
                 console.error('Vote failed:', voteError.message);
             } else {
-                // Local feedback (console log) as per assignment requirements
+                // Update local state so the UI reflects the vote immediately
+                setUserVotes(prev => ({
+                    ...prev,
+                    [imageId]: voteType
+                }));
                 console.log(`Recorded ${voteType}vote for image ${imageId}`);
             }
         } catch (err) {
@@ -165,57 +184,68 @@ export default function Home() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                        {images.map((item) => (
-                            <div key={item.id} className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+                        {images.map((item) => {
+                            const currentVote = userVotes[item.id];
+                            return (
+                                <div key={item.id} className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
 
-                                {/* Image Container */}
-                                <div className="relative aspect-video w-full bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-100 dark:border-zinc-800">
-                                    {item.url ? (
-                                        <img src={item.url} alt={item.title} className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-zinc-400 italic text-sm">No image preview</div>
-                                    )}
-                                </div>
+                                    {/* Image Container */}
+                                    <div className="relative aspect-video w-full bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-100 dark:border-zinc-800">
+                                        {item.url ? (
+                                            <img src={item.url} alt={item.title} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-zinc-400 italic text-sm">No image preview</div>
+                                        )}
+                                    </div>
 
-                                {/* Card Body */}
-                                <div className="flex flex-1 flex-col p-6">
-                                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 truncate">
-                                        {item.title || 'Untitled Image'}
-                                    </h3>
-                                    <p className="mt-2 flex-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
-                                        {item.description || item.caption || 'No description provided.'}
-                                    </p>
+                                    {/* Card Body */}
+                                    <div className="flex flex-1 flex-col p-6">
+                                        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 truncate">
+                                            {item.title || 'Untitled Image'}
+                                        </h3>
+                                        <p className="mt-2 flex-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
+                                            {item.description || item.caption || 'No description provided.'}
+                                        </p>
 
-                                    {/* Vote Section */}
-                                    <div className="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                                        <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-tighter">REF_{String(item.id).slice(0, 8)}</span>
+                                        {/* Vote Section */}
+                                        <div className="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                            <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-tighter">REF_{String(item.id).slice(0, 8)}</span>
 
-                                        <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-800/50 p-1 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                            <button
-                                                disabled={votingId === item.id}
-                                                onClick={() => handleVote(item.id, 'up')}
-                                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-emerald-600 transition-all disabled:opacity-30 shadow-sm"
-                                                aria-label="Upvote"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                disabled={votingId === item.id}
-                                                onClick={() => handleVote(item.id, 'down')}
-                                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-rose-600 transition-all disabled:opacity-30 shadow-sm"
-                                                aria-label="Downvote"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
+                                            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-800/50 p-1 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                                <button
+                                                    disabled={votingId === item.id}
+                                                    onClick={() => handleVote(item.id, 'up')}
+                                                    className={`p-2 rounded-lg transition-all disabled:opacity-30 shadow-sm ${
+                                                        currentVote === 'up'
+                                                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                                                            : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-emerald-600'
+                                                    }`}
+                                                    aria-label="Upvote"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    disabled={votingId === item.id}
+                                                    onClick={() => handleVote(item.id, 'down')}
+                                                    className={`p-2 rounded-lg transition-all disabled:opacity-30 shadow-sm ${
+                                                        currentVote === 'down'
+                                                            ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
+                                                            : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-rose-600'
+                                                    }`}
+                                                    aria-label="Downvote"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 
