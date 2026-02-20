@@ -1,40 +1,55 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-// @ts-ignore: Importing from CDN is required for this environment, but TS cannot resolve the type declarations here.
+// @ts-ignore: Using CDN import to ensure the preview compiles correctly in this environment.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 /**
  * Assignment #3 & #4: Gated Gallery + Caption Rating
- * Resolved TypeScript and Environment errors:
- * - Added type definitions for parameters and state.
- * - Safely accessed global environment variables.
- * - Ensured compatibility with the preview build system.
+ * Features:
+ * 1. Google Auth protection for gallery content.
+ * 2. Voting logic: Upvote (+1), Downvote (-1).
+ * 3. Persistence: Highlights existing votes on load.
+ * 4. Interactions: Users can change votes or "undo" by clicking the same button.
  */
 
+interface Caption {
+    id: string;
+    content: string;
+    is_featured: boolean;
+    created_datetime_utc: string;
+}
+
+interface Vote {
+    caption_id: string;
+    vote_value: number;
+}
+
 // Safe access to global environment variables provided by the platform
-const getFirebaseConfig = () => {
+const getSupabaseConfig = () => {
     try {
         // @ts-ignore: __firebase_config is a global provided at runtime
         if (typeof __firebase_config !== 'undefined') {
             // @ts-ignore
-            return JSON.parse(__firebase_config);
+            const config = JSON.parse(__firebase_config);
+            return {
+                url: `https://${config.projectId}.supabase.co`,
+                key: "" // Key is injected at runtime
+            };
         }
     } catch (e) {
-        console.error("Failed to parse firebase config", e);
+        console.error("Failed to parse config", e);
     }
-    return { projectId: '' };
+    return { url: '', key: '' };
 };
 
-const firebaseConfig = getFirebaseConfig();
-const supabaseUrl = `https://${firebaseConfig.projectId}.supabase.co`;
-const supabaseKey = ""; // The execution environment provides the key at runtime
-const supabase = createClient(supabaseUrl, supabaseKey);
+const config = getSupabaseConfig();
+const supabase = createClient(config.url, config.key);
 
 export default function App() {
     const [user, setUser] = useState<any>(null);
-    const [captions, setCaptions] = useState<any[]>([]);
-    const [userVotes, setUserVotes] = useState<Record<string, number>>({}); // { caption_id: vote_value }
+    const [captions, setCaptions] = useState<Caption[]>([]);
+    const [userVotes, setUserVotes] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -47,9 +62,12 @@ export default function App() {
                 .select('caption_id, vote_value')
                 .eq('profile_id', userId);
 
-            if (fetchError) throw fetchError;
+            if (fetchError) {
+                console.error('Error fetching user votes:', fetchError.message);
+                return;
+            }
 
-            const votesMap = (data || []).reduce((acc: Record<string, number>, vote: any) => {
+            const votesMap = (data as Vote[] || []).reduce((acc: Record<string, number>, vote: Vote) => {
                 acc[vote.caption_id] = vote.vote_value;
                 return acc;
             }, {});
@@ -69,8 +87,11 @@ export default function App() {
                 .from('captions')
                 .select('*');
 
-            if (fetchError) throw fetchError;
-            setCaptions(data || []);
+            if (fetchError) {
+                setError(fetchError.message);
+                return;
+            }
+            setCaptions(data as Caption[] || []);
         } catch (err: any) {
             console.error('Fetch error:', err);
             setError(err.message);
@@ -95,7 +116,7 @@ export default function App() {
             }
         };
 
-        initAuth();
+        initAuth().catch(err => console.error("Auth initialization failed", err));
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event: any, session: any) => {
@@ -120,7 +141,7 @@ export default function App() {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin,
+                redirectTo: typeof window !== 'undefined' ? window.location.origin : '',
             },
         });
     };
@@ -145,7 +166,10 @@ export default function App() {
                     .eq('caption_id', captionId)
                     .eq('profile_id', user.id);
 
-                if (deleteError) throw deleteError;
+                if (deleteError) {
+                    console.error('Error deleting vote:', deleteError.message);
+                    return;
+                }
 
                 setUserVotes((prev: Record<string, number>) => {
                     const newVotes = { ...prev };
@@ -167,7 +191,10 @@ export default function App() {
                     onConflict: 'profile_id, caption_id'
                 });
 
-            if (upsertError) throw upsertError;
+            if (upsertError) {
+                console.error('Error upserting vote:', upsertError.message);
+                return;
+            }
 
             // Optimistically update local state
             setUserVotes((prev: Record<string, number>) => ({
@@ -247,7 +274,7 @@ export default function App() {
                         )}
 
                         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                            {captions.map((item: any) => {
+                            {captions.map((item) => {
                                 const currentVote = userVotes[item.id];
                                 return (
                                     <div
