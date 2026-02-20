@@ -6,13 +6,15 @@ import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 /**
  * Assignment #4: Mutating Data (Rating/Voting)
- * Updated to fix the "Could not resolve" error by using the correct alias path.
- * This version maintains the persistent voting highlights using 'caption_id'.
+ * Fixed: Updated import path to correctly resolve the Supabase client.
+ * Features:
+ * - Precise schema matching (vote_value, profile_id, caption_id).
+ * - Persistent UI highlights for up/down votes.
  */
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
     const [images, setImages] = useState<any[]>([]);
-    const [userVotes, setUserVotes] = useState<Record<string, 'up' | 'down'>>({});
+    const [userVotes, setUserVotes] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [votingId, setVotingId] = useState<string | null>(null);
@@ -64,17 +66,17 @@ export default function Home() {
 
             if (fetchError) throw fetchError;
 
-            // 2. Fetch User's existing votes
+            // 2. Fetch User's existing votes using profile_id and vote_value
             const { data: voteData, error: voteError } = await supabase
                 .from('caption_votes')
-                .select('caption_id, vote_type')
-                .eq('user_id', userId);
+                .select('caption_id, vote_value')
+                .eq('profile_id', userId);
 
             if (voteError) throw voteError;
 
-            const voteMap: Record<string, 'up' | 'down'> = {};
+            const voteMap: Record<string, number> = {};
             voteData?.forEach(v => {
-                voteMap[v.caption_id] = v.vote_type;
+                voteMap[v.caption_id] = v.vote_value;
             });
 
             setImages(imageData || []);
@@ -87,23 +89,25 @@ export default function Home() {
     };
 
     /**
-     * Mutation: Inserts a vote into 'caption_votes'
+     * Mutation: Upserts a vote into 'caption_votes'
+     * Upvote = 1, Downvote = -1
      */
-    const handleVote = async (imageId: string, voteType: 'up' | 'down') => {
+    const handleVote = async (imageId: string, direction: 'up' | 'down') => {
         if (!user) return;
 
+        const newValue = direction === 'up' ? 1 : -1;
         setVotingId(imageId);
 
         try {
             const { error: voteError } = await supabase
                 .from('caption_votes')
-                .insert([
+                .upsert([
                     {
                         caption_id: imageId,
-                        user_id: user.id,
-                        vote_type: voteType
+                        profile_id: user.id,
+                        vote_value: newValue
                     }
-                ]);
+                ], { onConflict: 'profile_id,caption_id' });
 
             if (voteError) {
                 setError(voteError.message);
@@ -111,7 +115,7 @@ export default function Home() {
             } else {
                 setUserVotes(prev => ({
                     ...prev,
-                    [imageId]: voteType
+                    [imageId]: newValue
                 }));
                 setError(null);
             }
@@ -205,7 +209,7 @@ export default function Home() {
                                                     disabled={votingId === item.id}
                                                     onClick={() => handleVote(item.id, 'up')}
                                                     className={`p-2 rounded-lg transition-all disabled:opacity-30 shadow-sm ${
-                                                        currentVote === 'up'
+                                                        currentVote === 1
                                                             ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
                                                             : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-emerald-600'
                                                     }`}
@@ -219,7 +223,7 @@ export default function Home() {
                                                     disabled={votingId === item.id}
                                                     onClick={() => handleVote(item.id, 'down')}
                                                     className={`p-2 rounded-lg transition-all disabled:opacity-30 shadow-sm ${
-                                                        currentVote === 'down'
+                                                        currentVote === -1
                                                             ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
                                                             : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400 hover:text-rose-600'
                                                     }`}
