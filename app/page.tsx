@@ -151,16 +151,26 @@ export default function Home() {
                                             <button
                                                 disabled={votingId === item.id}
                                                 onClick={() => handleVote(item.id, 'up')}
-                                                className={`flex-1 py-1 rounded border transition-colors ${currentVote === 1 ? 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}
+                                                className={`flex-1 py-1 rounded border transition-all duration-200 ${
+                                                    currentVote === 1
+                                                        ? 'bg-emerald-500 border-emerald-600 text-white shadow-inner' // Active State
+                                                        : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-emerald-50 hover:border-emerald-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-emerald-950/30' // Neutral State
+                                                }`}
                                             >
-                                                ▲ Up
+                                                ▲ Upvote
                                             </button>
+
+                                            {/* DOWNVOTE BUTTON */}
                                             <button
                                                 disabled={votingId === item.id}
                                                 onClick={() => handleVote(item.id, 'down')}
-                                                className={`flex-1 py-1 rounded border transition-colors ${currentVote === -1 ? 'bg-red-100 border-red-500 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}
+                                                className={`flex-1 py-1 rounded border transition-all duration-200 ${
+                                                    currentVote === -1
+                                                        ? 'bg-orange-500 border-orange-600 text-white shadow-inner' // Active State
+                                                        : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-orange-50 hover:border-orange-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-orange-950/30' // Neutral State
+                                                }`}
                                             >
-                                                ▼ Down
+                                                ▼ Downvote
                                             </button>
                                         </div>
                                     </div>
