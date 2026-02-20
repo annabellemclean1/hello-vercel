@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-// @ts-ignore: Using CDN import to ensure the preview compiles correctly in this environment.
+// @ts-ignore: Using CDN import for preview environment compatibility.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 /**
- * Assignment #3 & #4: Gated Gallery + Caption Rating
- * Features:
- * 1. Google Auth protection for gallery content.
- * 2. Voting logic: Upvote (+1), Downvote (-1).
- * 3. Persistence: Highlights existing votes on load.
- * 4. Interactions: Users can change votes or "undo" by clicking the same button.
+ * Assignment #3 & #4: Gated Supabase Integration
+ * * CORE FUNCTIONALITY:
+ * 1. Data Source: Exclusively uses Supabase 'captions' and 'caption_votes' tables.
+ * 2. Authentication: Gated UI that requires Google Auth to view or mutate data.
+ * 3. Voting Logic:
+ * - CREATE/UPDATE: Uses .upsert() to record or change a vote (+1 or -1).
+ * - DELETE: Removes the row if a user clicks their active vote again (Undo).
+ * 4. Persistence: Fetches user vote history on load to highlight active buttons.
  */
 
 interface Caption {
@@ -25,20 +27,20 @@ interface Vote {
     vote_value: number;
 }
 
-// Safe access to global environment variables provided by the platform
+// Configuration helper to securely initialize the Supabase client
 const getSupabaseConfig = () => {
     try {
-        // @ts-ignore: __firebase_config is a global provided at runtime
+        // @ts-ignore: __firebase_config is a global provided at runtime in this environment
         if (typeof __firebase_config !== 'undefined') {
             // @ts-ignore
             const config = JSON.parse(__firebase_config);
             return {
                 url: `https://${config.projectId}.supabase.co`,
-                key: "" // Key is injected at runtime
+                key: "" // Key provided by the execution context
             };
         }
     } catch (e) {
-        console.error("Failed to parse config", e);
+        console.error("Configuration Error:", e);
     }
     return { url: '', key: '' };
 };
@@ -53,54 +55,48 @@ export default function App() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- DATA FETCHING ---
+    // --- DATABASE READ OPERATIONS ---
 
+    // Fetches the specific votes cast by the logged-in user to drive UI state
     const fetchUserVotes = useCallback(async (userId: string) => {
-        try {
-            const { data, error: fetchError } = await supabase
-                .from('caption_votes')
-                .select('caption_id, vote_value')
-                .eq('profile_id', userId);
+        const { data, error: fetchError } = await supabase
+            .from('caption_votes')
+            .select('caption_id, vote_value')
+            .eq('profile_id', userId);
 
-            if (fetchError) {
-                console.error('Error fetching user votes:', fetchError.message);
-                return;
-            }
-
-            const votesMap = (data as Vote[] || []).reduce((acc: Record<string, number>, vote: Vote) => {
-                acc[vote.caption_id] = vote.vote_value;
-                return acc;
-            }, {});
-
-            setUserVotes(votesMap);
-        } catch (err: any) {
-            console.error('Error fetching user votes:', err.message);
+        if (fetchError) {
+            console.error('Error loading user votes from Supabase:', fetchError.message);
+            return;
         }
+
+        const votesMap = (data as Vote[] || []).reduce((acc: Record<string, number>, vote: Vote) => {
+            acc[vote.caption_id] = vote.vote_value;
+            return acc;
+        }, {});
+
+        setUserVotes(votesMap);
     }, []);
 
+    // Fetches the main gallery content from the 'captions' table
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
 
-        try {
-            const { data, error: fetchError } = await supabase
-                .from('captions')
-                .select('*');
+        const { data, error: fetchError } = await supabase
+            .from('captions')
+            .select('*');
 
-            if (fetchError) {
-                setError(fetchError.message);
-                return;
-            }
-            setCaptions(data as Caption[] || []);
-        } catch (err: any) {
-            console.error('Fetch error:', err);
-            setError(err.message);
-        } finally {
+        if (fetchError) {
+            setError(fetchError.message);
             setLoading(false);
+            return;
         }
+
+        setCaptions(data as Caption[] || []);
+        setLoading(false);
     }, []);
 
-    // --- AUTHENTICATION ---
+    // --- AUTHENTICATION & STATE SYNC ---
 
     useEffect(() => {
         const initAuth = async () => {
@@ -109,6 +105,7 @@ export default function App() {
             setUser(currentUser);
 
             if (currentUser) {
+                // Rely on database for initial state
                 await fetchData();
                 await fetchUserVotes(currentUser.id);
             } else {
@@ -116,7 +113,8 @@ export default function App() {
             }
         };
 
-        initAuth().catch(err => console.error("Auth initialization failed", err));
+        // Handle the returned promise to avoid ignored promise warnings
+        initAuth().catch((err) => console.error("Auth sync failed:", err));
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event: any, session: any) => {
@@ -127,6 +125,7 @@ export default function App() {
                     await fetchData();
                     await fetchUserVotes(currentUser.id);
                 } else {
+                    // Clear local state when logged out
                     setCaptions([]);
                     setUserVotes({});
                     setLoading(false);
@@ -150,15 +149,17 @@ export default function App() {
         await supabase.auth.signOut();
     };
 
-    // --- VOTING LOGIC ---
+    // --- DATABASE MUTATION OPERATIONS ---
 
     const handleVote = async (captionId: string, value: number) => {
+        // Enforce authentication check per assignment requirement
         if (!user) return;
 
         const existingVoteValue = userVotes[captionId];
 
         try {
-            // SCENARIO 1: UNDO VOTE
+            // SCENARIO 1: DELETE (Undo Vote)
+            // Triggered if the user clicks the same rating button twice
             if (existingVoteValue === value) {
                 const { error: deleteError } = await supabase
                     .from('caption_votes')
@@ -167,11 +168,11 @@ export default function App() {
                     .eq('profile_id', user.id);
 
                 if (deleteError) {
-                    console.error('Error deleting vote:', deleteError.message);
+                    console.error('Failed to remove vote from Supabase:', deleteError.message);
                     return;
                 }
 
-                setUserVotes((prev: Record<string, number>) => {
+                setUserVotes((prev) => {
                     const newVotes = { ...prev };
                     delete newVotes[captionId];
                     return newVotes;
@@ -179,7 +180,8 @@ export default function App() {
                 return;
             }
 
-            // SCENARIO 2: NEW VOTE or CHANGE VOTE
+            // SCENARIO 2: UPSERT (Create or Update Vote)
+            // Uses the database constraint on (profile_id, caption_id) to update existing rows
             const { error: upsertError } = await supabase
                 .from('caption_votes')
                 .upsert({
@@ -192,26 +194,25 @@ export default function App() {
                 });
 
             if (upsertError) {
-                console.error('Error upserting vote:', upsertError.message);
+                console.error('Failed to record vote in Supabase:', upsertError.message);
                 return;
             }
 
-            // Optimistically update local state
-            setUserVotes((prev: Record<string, number>) => ({
+            // Optimistically update the local view to match the database mutation
+            setUserVotes((prev) => ({
                 ...prev,
                 [captionId]: value
             }));
-
         } catch (err: any) {
-            console.error('Voting error:', err.message);
+            console.error('Voting error unexpected:', err.message);
         }
     };
 
-    // --- RENDER HELPERS ---
+    // --- UI RENDERING ---
 
     if (loading) return (
         <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-            <div className="text-zinc-500 animate-pulse font-medium">Loading Supabase Gallery...</div>
+            <div className="text-zinc-500 animate-pulse font-medium">Synchronizing with Supabase...</div>
         </div>
     );
 
@@ -219,14 +220,14 @@ export default function App() {
         <main className="min-h-screen bg-zinc-50 px-6 py-12 dark:bg-zinc-950">
             <div className="mx-auto max-w-6xl">
 
-                {/* Header Section */}
+                {/* Header: Displays login status and user info */}
                 <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between border-b border-zinc-200 pb-8 dark:border-zinc-800">
                     <div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
                             Supabase Gallery
                         </h1>
                         <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400">
-                            {user ? 'Authenticated: You can now rate captions.' : 'Protected: Please sign in to rate captions.'}
+                            {user ? 'Authenticated: Use the database to rate your favorite captions.' : 'Protected: Log in to see database entries.'}
                         </p>
                     </div>
 
@@ -236,25 +237,19 @@ export default function App() {
                                 <span className="text-xs font-mono text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded">
                                     {user.email}
                                 </span>
-                                <button
-                                    onClick={handleLogout}
-                                    className="text-sm font-bold text-red-600 hover:underline"
-                                >
+                                <button onClick={handleLogout} className="text-sm font-bold text-red-600 hover:underline">
                                     Sign Out
                                 </button>
                             </div>
                         ) : (
-                            <button
-                                onClick={handleLogin}
-                                className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-bold text-zinc-50 shadow-lg transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
-                            >
+                            <button onClick={handleLogin} className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-bold text-zinc-50 shadow-lg transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900">
                                 Sign in with Google
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* Content Section */}
+                {/* Main Content Area */}
                 {!user ? (
                     <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-sm text-center">
                         <div className="mb-4 text-zinc-300">
@@ -262,14 +257,14 @@ export default function App() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                         </div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Content Gated</h2>
-                        <p className="mt-2 text-zinc-500 max-w-xs mx-auto">Authentication is required to interact with the Supabase gallery.</p>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Data Access Restricted</h2>
+                        <p className="mt-2 text-zinc-500 max-w-xs mx-auto">Please authenticate to fetch captions from the Supabase database.</p>
                     </div>
                 ) : (
                     <>
                         {error && (
                             <div className="mb-8 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-                                <strong>Error:</strong> {error}
+                                <strong>Supabase Error:</strong> {error}
                             </div>
                         )}
 
@@ -297,7 +292,7 @@ export default function App() {
                                                 "{item.content}"
                                             </p>
 
-                                            {/* Voting Interaction Area */}
+                                            {/* Interaction Area: Buttons highlight based on user's database vote records */}
                                             <div className="mt-8 border-t border-zinc-100 pt-5 dark:border-zinc-800">
                                                 <div className="flex gap-2">
                                                     <button
@@ -328,7 +323,7 @@ export default function App() {
 
                         {captions.length === 0 && !error && (
                             <div className="mt-20 text-center">
-                                <p className="text-zinc-500 italic">No captions found in the "captions" table.</p>
+                                <p className="text-zinc-500 italic">No entries found in the 'captions' table.</p>
                             </div>
                         )}
                     </>
