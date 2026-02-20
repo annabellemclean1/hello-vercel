@@ -139,40 +139,40 @@ export default function Home() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {images.map((item) => {
-                            // 1. Determine exactly what the current vote is for THIS item
                             const currentVote = userVotes[item.id];
-                            const isUpvoted = currentVote === 1;
-                            const isDownvoted = currentVote === -1;
-
                             return (
-                                <div key={item.id} className="...">
-                                    {/* ... image code ... */}
-                                    <div className="mt-4 flex gap-2 border-t pt-4 dark:border-zinc-800">
-                                        {/* UPVOTE BUTTON */}
-                                        <button
-                                            disabled={votingId === item.id}
-                                            onClick={() => handleVote(item.id, 'up')}
-                                            className={`flex-1 py-2 px-4 rounded-md border text-sm font-medium transition-all ${
-                                                isUpvoted
-                                                    ? 'bg-emerald-600 border-emerald-700 text-white shadow-md' // STAYS GREEN
-                                                    : 'bg-white border-zinc-200 text-zinc-600 hover:bg-emerald-50 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300'
-                                            }`}
-                                        >
-                                            {isUpvoted ? '▲ Upvoted' : '▲ Up'}
-                                        </button>
+                                <div key={item.id} className="border rounded-xl bg-white dark:bg-zinc-900 dark:border-zinc-800 overflow-hidden shadow-sm">
+                                    <img src={item.url} alt={item.title} className="aspect-video w-full object-cover" />
+                                    <div className="p-4">
+                                        <h3 className="font-bold truncate dark:text-white">{item.title}</h3>
+                                        <p className="text-sm text-zinc-500 mt-1">{item.caption}</p>
 
-                                        {/* DOWNVOTE BUTTON */}
-                                        <button
-                                            disabled={votingId === item.id}
-                                            onClick={() => handleVote(item.id, 'down')}
-                                            className={`flex-1 py-2 px-4 rounded-md border text-sm font-medium transition-all ${
-                                                isDownvoted
-                                                    ? 'bg-orange-600 border-orange-700 text-white shadow-md' // STAYS ORANGE
-                                                    : 'bg-white border-zinc-200 text-zinc-600 hover:bg-orange-50 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300'
-                                            }`}
-                                        >
-                                            {isDownvoted ? '▼ Downvoted' : '▼ Down'}
-                                        </button>
+                                        <div className="mt-4 flex gap-2 border-t pt-4 dark:border-zinc-800">
+                                            <button
+                                                disabled={votingId === item.id}
+                                                onClick={() => handleVote(item.id, 'up')}
+                                                className={`flex-1 py-1 rounded border transition-all duration-200 ${
+                                                    currentVote === 1
+                                                        ? 'bg-emerald-500 border-emerald-600 text-white shadow-inner' // Active State
+                                                        : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-emerald-50 hover:border-emerald-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-emerald-950/30' // Neutral State
+                                                }`}
+                                            >
+                                                ▲ Upvote
+                                            </button>
+
+                                            {/* DOWNVOTE BUTTON */}
+                                            <button
+                                                disabled={votingId === item.id}
+                                                onClick={() => handleVote(item.id, 'down')}
+                                                className={`flex-1 py-1 rounded border transition-all duration-200 ${
+                                                    currentVote === -1
+                                                        ? 'bg-orange-500 border-orange-600 text-white shadow-inner' // Active State
+                                                        : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-orange-50 hover:border-orange-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-orange-950/30' // Neutral State
+                                                }`}
+                                            >
+                                                ▼ Downvote
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );
