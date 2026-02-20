@@ -50,7 +50,7 @@ export default function Home() {
         try {
             // 1. Fetch Captions and their related Images based on the schema
             // Relation: captions.image_id -> images.id
-            const { data: captionData, error: fetchError } = await supabase
+            const {data: captionData, error: fetchError} = await supabase
                 .from('captions')
                 .select(`
                     id,
@@ -65,7 +65,7 @@ export default function Home() {
             if (fetchError) throw fetchError;
 
             // 2. Fetch User's existing votes from caption_votes
-            const { data: voteData, error: voteError } = await supabase
+            const {data: voteData, error: voteError} = await supabase
                 .from('caption_votes')
                 .select('caption_id, vote_value')
                 .eq('profile_id', userId);
@@ -89,7 +89,7 @@ export default function Home() {
     useEffect(() => {
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const {data: {session}} = await supabase.auth.getSession();
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
                 if (currentUser) {
@@ -105,7 +105,7 @@ export default function Home() {
 
         void initAuth();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        const {data: {subscription}} = supabase.auth.onAuthStateChange(
             async (_event: AuthChangeEvent, session: Session | null) => {
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
@@ -134,7 +134,7 @@ export default function Home() {
 
         try {
             // Data Mutation: Recording the user's vote in the caption_votes table
-            const { error: voteError } = await supabase
+            const {error: voteError} = await supabase
                 .from('caption_votes')
                 .upsert([
                     {
@@ -143,7 +143,7 @@ export default function Home() {
                         vote_value: newValue,
                         modified_datetime_utc: new Date().toISOString()
                     }
-                ], { onConflict: 'profile_id,caption_id' });
+                ], {onConflict: 'profile_id,caption_id'});
 
             if (voteError) {
                 setError(voteError.message);
@@ -165,24 +165,29 @@ export default function Home() {
     const handleLogin = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : '' },
+            options: {redirectTo: typeof window !== 'undefined' ? window.location.origin : ''},
         });
     };
 
     if (loading) return (
         <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-            <div className="text-zinc-500 animate-pulse font-mono tracking-widest uppercase text-xs">Synchronizing Schema...</div>
+            <div className="text-zinc-500 animate-pulse font-mono tracking-widest uppercase text-xs">Synchronizing
+                Schema...
+            </div>
         </div>
     );
 
     return (
-        <main className="min-h-screen bg-zinc-50 px-4 py-8 md:px-8 md:py-12 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50">
+        <main
+            className="min-h-screen bg-zinc-50 px-4 py-8 md:px-8 md:py-12 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50">
             <div className="mx-auto max-w-6xl">
 
                 {/* Header Section */}
-                <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-zinc-200 pb-8 dark:border-zinc-800">
+                <header
+                    className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-zinc-200 pb-8 dark:border-zinc-800">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-black uppercase tracking-tighter md:text-5xl italic">Caption Engine</h1>
+                        <h1 className="text-3xl font-black uppercase tracking-tighter md:text-5xl italic">Caption
+                            Engine</h1>
                         <p className="text-zinc-500 dark:text-zinc-400 font-medium">
                             {user ? `System User: ${user.email}` : 'Authorization required to access mutations.'}
                         </p>
@@ -200,7 +205,10 @@ export default function Home() {
                                 onClick={() => supabase.auth.signOut()}
                                 className="group flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-rose-500 transition-colors"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
+                                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
                                 Terminal Logout
                             </button>
                         )}
@@ -208,14 +216,19 @@ export default function Home() {
                 </header>
 
                 {!user ? (
-                    <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-xl text-center px-6">
-                        <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-3xl rotate-3 flex items-center justify-center mb-6">
-                            <svg className="w-10 h-10 text-zinc-900 dark:text-zinc-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <div
+                        className="flex flex-col items-center justify-center py-32 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-xl text-center px-6">
+                        <div
+                            className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-3xl rotate-3 flex items-center justify-center mb-6">
+                            <svg className="w-10 h-10 text-zinc-900 dark:text-zinc-50" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                             </svg>
                         </div>
                         <h2 className="text-3xl font-black tracking-tight mb-3">Protected Assets</h2>
-                        <p className="text-zinc-500 max-w-sm leading-relaxed">Voting, rating, and data mutation are only available to authenticated sessions.</p>
+                        <p className="text-zinc-500 max-w-sm leading-relaxed">Voting, rating, and data mutation are only
+                            available to authenticated sessions.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -224,19 +237,24 @@ export default function Home() {
                             const image = item.images;
 
                             return (
-                                <div key={item.id} className="group relative flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl transition-all hover:ring-2 hover:ring-zinc-900 dark:hover:ring-zinc-50 overflow-hidden">
+                                <div key={item.id}
+                                     className="group relative flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl transition-all hover:ring-2 hover:ring-zinc-900 dark:hover:ring-zinc-50 overflow-hidden">
                                     <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                                         {image?.url ? (
-                                            <img src={image.url} alt={image.image_description || "Gallery Item"} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                            <img src={image.url} alt={image.image_description || "Gallery Item"}
+                                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"/>
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-zinc-400 font-mono text-xs uppercase">Null Image Reference</div>
+                                            <div
+                                                className="flex h-full items-center justify-center text-zinc-400 font-mono text-xs uppercase">Null
+                                                Image Reference</div>
                                         )}
                                     </div>
 
                                     <div className="p-6 flex flex-col flex-1">
                                         <div className="flex-1 space-y-4">
                                             <div className="flex items-center gap-2">
-                                                <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Caption Asset</span>
+                                                <span
+                                                    className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Caption Asset</span>
                                             </div>
                                             <p className="text-lg font-bold leading-tight text-zinc-900 dark:text-zinc-50">
                                                 {item.content}
@@ -245,11 +263,14 @@ export default function Home() {
 
                                         <div className="mt-8 flex items-center justify-between">
                                             <div className="flex -space-x-2">
-                                                <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 border-2 border-white dark:border-zinc-900" />
-                                                <div className="w-6 h-6 rounded-full bg-zinc-300 dark:bg-zinc-600 border-2 border-white dark:border-zinc-900" />
+                                                <div
+                                                    className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 border-2 border-white dark:border-zinc-900"/>
+                                                <div
+                                                    className="w-6 h-6 rounded-full bg-zinc-300 dark:bg-zinc-600 border-2 border-white dark:border-zinc-900"/>
                                             </div>
 
-                                            <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
+                                            <div
+                                                className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
                                                 <button
                                                     disabled={votingId === item.id}
                                                     onClick={() => handleVote(item.id, 'up')}
@@ -259,7 +280,11 @@ export default function Home() {
                                                             : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400'
                                                     }`}
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7" /></svg>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor"
+                                                         viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth="3" d="M5 15l7-7 7 7"/>
+                                                    </svg>
                                                 </button>
 
                                                 <button
@@ -271,7 +296,11 @@ export default function Home() {
                                                             : 'hover:bg-white dark:hover:bg-zinc-700 text-zinc-400'
                                                     }`}
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor"
+                                                         viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth="3" d="M19 9l-7 7-7-7"/>
+                                                    </svg>
                                                 </button>
                                             </div>
                                         </div>
@@ -283,9 +312,13 @@ export default function Home() {
                 )}
 
                 {error && (
-                    <div className="fixed bottom-6 right-6 max-w-sm p-4 bg-rose-500 text-white rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 font-bold text-sm">
+                    <div
+                        className="fixed bottom-6 right-6 max-w-sm p-4 bg-rose-500 text-white rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 font-bold text-sm">
                         <div className="flex items-center gap-3">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
                             <span>Mutation Blocked: {error}</span>
                         </div>
                     </div>
