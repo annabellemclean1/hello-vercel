@@ -121,14 +121,15 @@
      try {
        const { error: voteError } = await supabase
          .from('caption_votes')
-         .upsert([
-           {
-             caption_id: captionId,
-             profile_id: user.id,
-             vote_value: newValue,
-             modified_datetime_utc: new Date().toISOString()
-           }
-         ], { onConflict: 'profile_id,caption_id' });
+           .upsert([
+             {
+               caption_id: captionId,
+               profile_id: user.id,
+               vote_value: newValue,
+               created_datetime_utc: new Date().toISOString(),   // ← add this
+               modified_datetime_utc: new Date().toISOString()
+             }
+           ], { onConflict: 'profile_id,caption_id' });
 
        if (voteError) throw voteError;
      } catch (err: any) {
