@@ -121,6 +121,7 @@ export default function Home() {
             caption_id: captionId,
             profile_id: user.id,
             vote_value: newValue,
+            created_datetime_utc: new Date().toISOString(),   // ← must be here
             modified_datetime_utc: new Date().toISOString()
           }
         ], { onConflict: 'profile_id,caption_id' });
