@@ -18,7 +18,7 @@ interface CaptionRow {
     id: string;
     url: string;
     image_description: string;
-  };
+  } | null;
 }
 
 export default function Home() {
@@ -93,7 +93,7 @@ export default function Home() {
         voteMap[v.caption_id] = v.vote_value;
       });
 
-      setCaptions((captionData as CaptionRow[]) || []);
+      setCaptions((captionData as unknown as CaptionRow[]) || []);
       setUserVotes(voteMap);
     } catch (err: any) {
       setError(err.message);
