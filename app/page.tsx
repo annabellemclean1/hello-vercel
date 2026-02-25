@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
+import LoginButton from '@/components/LoginButton';
 
 /**
  * Assignment #4: Mutating Data (Rating/Voting)
@@ -149,17 +150,9 @@ export default function Home() {
         <header className="mb-8 flex justify-between items-center border-b pb-6 dark:border-zinc-800">
           <h1 className="text-2xl font-bold dark:text-white">Gallery</h1>
           {!user ? (
-            <button
-              onClick={handleLogin}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold"
-            >
-              Sign In
-            </button>
+            <LoginButton />
           ) : (
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="text-sm text-red-500"
-            >
+            <button onClick={() => supabase.auth.signOut()} className="text-sm text-red-500">
               Sign Out
             </button>
           )}
