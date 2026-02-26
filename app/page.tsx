@@ -105,7 +105,8 @@ export default function Home() {
         voteMap[v.caption_id] = v.vote_value;
       });
 
-      setCaptions((captionData as unknown as CaptionRow[]) || []);
+      const shuffled = [...(captionData as unknown as CaptionRow[])].sort(() => Math.random() - 0.5);
+      setCaptions(shuffled || []);
       setUserVotes(voteMap);
     } catch (err: any) {
       setError(err.message);
