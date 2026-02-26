@@ -257,149 +257,182 @@ export default function Home() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#f5f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", color: '#7a6f63' }}>
+      Loading...
+    </div>
+  );
 
   const isUploading = uploadStep !== null;
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8">
-      <div className="mx-auto max-w-6xl">
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap');
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f5f0e8; }
+        .card { transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(26,20,16,0.12) !important; }
+        .btn-vote { transition: all 0.15s; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .btn-vote.up:hover { background: #edf7f1 !important; border-color: #2d7a4f !important; color: #2d7a4f !important; }
+        .btn-vote.up.active { background: #2d7a4f !important; border-color: #2d7a4f !important; color: white !important; }
+        .btn-vote.down:hover { background: #fdf0ec !important; border-color: #c8502a !important; color: #c8502a !important; }
+        .btn-vote.down.active { background: #c8502a !important; border-color: #c8502a !important; color: white !important; }
+        .btn-generate { transition: background 0.2s, transform 0.1s; }
+        .btn-generate:hover:not(:disabled) { background: #c8502a !important; transform: translateY(-1px); }
+        .signout-btn { transition: all 0.2s; }
+        .signout-btn:hover { border-color: #c8502a !important; color: #c8502a !important; }
+        .file-zone { transition: border-color 0.2s, color 0.2s; }
+        .file-zone:hover { border-color: #c8502a !important; color: #1a1410 !important; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .card-anim { animation: fadeUp 0.4s ease both; }
+      `}</style>
 
-        {/* Header */}
-        <header className="mb-8 flex justify-between items-center border-b pb-6 dark:border-zinc-800">
-          <h1 className="text-2xl font-bold dark:text-white">Gallery</h1>
+      <main style={{ minHeight: '100vh', background: '#f5f0e8', fontFamily: "'DM Sans', sans-serif", color: '#1a1410', padding: '0 2rem 4rem' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+
+          {/* Header */}
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2rem 0 1.5rem', borderBottom: '1px solid #e0d8cc', marginBottom: '2.5rem' }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#1a1410' }}>
+              Almost <span style={{ color: '#c8502a' }}>Crackd</span>
+            </div>
+            {!user ? (
+              <button
+                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })}
+                style={{ background: '#1a1410', color: '#f5f0e8', border: 'none', padding: '0.6rem 1.4rem', borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.03em' }}
+              >
+                Sign In
+              </button>
+            ) : (
+              <button
+                className="signout-btn"
+                onClick={() => supabase.auth.signOut()}
+                style={{ fontSize: '0.8rem', fontWeight: 500, color: '#7a6f63', background: 'none', border: '1px solid #e0d8cc', padding: '0.4rem 1rem', borderRadius: 99, cursor: 'pointer', letterSpacing: '0.03em', textTransform: 'uppercase' }}
+              >
+                Sign Out
+              </button>
+            )}
+          </header>
+
           {!user ? (
-            <button
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold"
-            >
-              Sign In
-            </button>
+            <div style={{ textAlign: 'center', padding: '5rem 0', border: '1px solid #e0d8cc', borderRadius: 16, background: 'white' }}>
+              <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: '#7a6f63', fontStyle: 'italic' }}>Sign in to see images and vote.</p>
+            </div>
           ) : (
-            <button onClick={() => supabase.auth.signOut()} className="text-sm text-red-500">
-              Sign Out
-            </button>
-          )}
-        </header>
+            <>
+              {/* Upload Panel */}
+              <div style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 16, padding: '1.75rem 2rem', marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem', boxShadow: '0 2px 12px rgba(26,20,16,0.05)', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', fontWeight: 700, color: '#1a1410' }}>Upload an Image</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#7a6f63', marginTop: 2 }}>JPEG · PNG · WEBP · GIF · HEIC</div>
+                </div>
 
-        {!user ? (
-          <div className="text-center py-20 border rounded-xl dark:border-zinc-800">
-            <p className="dark:text-zinc-400">Sign in to see images and vote.</p>
-          </div>
-        ) : (
-          <>
-            {/* Upload Panel */}
-            <div className="mb-8 border rounded-xl bg-white dark:bg-zinc-900 dark:border-zinc-800 p-6">
-              <h2 className="font-bold text-sm uppercase tracking-wide text-zinc-400 mb-4">Upload an Image</h2>
+                <div style={{ width: 1, height: 40, background: '#e0d8cc', flexShrink: 0 }} />
 
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-                {/* File picker */}
-                <div className="flex-1">
+                <label className="file-zone" style={{ flex: 1, border: '1.5px dashed #e0d8cc', borderRadius: 10, padding: '0.75rem 1.25rem', fontSize: '0.85rem', color: '#7a6f63', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', minWidth: 180 }}>
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" style={{ flexShrink: 0 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  {previewUrl ? 'File selected ✓' : 'Choose a file or drag it here'}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic"
                     onChange={handleFileChange}
                     disabled={isUploading}
-                    className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-300"
+                    style={{ display: 'none' }}
                   />
-                  <p className="mt-1 text-xs text-zinc-400">Supported: JPEG, PNG, WEBP, GIF, HEIC</p>
-                </div>
+                </label>
 
-                {/* Preview */}
                 {previewUrl && (
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-24 h-24 object-cover rounded-lg border dark:border-zinc-700"
-                  />
+                  <img src={previewUrl} alt="Preview" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid #e0d8cc', flexShrink: 0 }} />
                 )}
 
-                {/* Upload button */}
                 <button
+                  className="btn-generate"
                   onClick={handleUpload}
                   disabled={!previewUrl || isUploading}
-                  className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors whitespace-nowrap"
+                  style={{ background: '#1a1410', color: '#f5f0e8', border: 'none', padding: '0.7rem 1.5rem', borderRadius: 10, fontSize: '0.85rem', fontWeight: 500, cursor: !previewUrl || isUploading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', letterSpacing: '0.02em', opacity: !previewUrl || isUploading ? 0.4 : 1 }}
                 >
-                  {isUploading ? UPLOAD_STEPS[uploadStep!] : 'Generate Captions'}
+                  {isUploading ? UPLOAD_STEPS[uploadStep!] : 'Generate Captions →'}
                 </button>
               </div>
 
               {/* Progress steps */}
               {isUploading && (
-                <div className="mt-4 flex gap-2">
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '-2rem', marginBottom: '2rem', paddingLeft: '0.5rem', flexWrap: 'wrap' }}>
                   {UPLOAD_STEPS.map((label, i) => (
-                    <div key={i} className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${i < uploadStep! ? 'bg-emerald-500' : i === uploadStep ? 'bg-blue-500 animate-pulse' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
-                      <span className={`text-xs ${i === uploadStep ? 'text-blue-500 font-medium' : i < uploadStep! ? 'text-emerald-500' : 'text-zinc-400'}`}>{label}</span>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: i < uploadStep! ? '#2d7a4f' : i === uploadStep ? '#c8502a' : '#e0d8cc' }} />
+                      <span style={{ fontSize: '0.72rem', color: i === uploadStep ? '#c8502a' : i < uploadStep! ? '#2d7a4f' : '#b0a898', fontWeight: i === uploadStep ? 500 : 400 }}>{label}</span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
 
-            {/* Gallery */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {captions.map((caption) => {
-                const currentVote = userVotes[caption.id];
-                return (
-                  <div
-                    key={caption.id}
-                    className="border rounded-xl bg-white dark:bg-zinc-900 dark:border-zinc-800 overflow-hidden shadow-sm"
-                  >
-                    <img
-                      src={caption.images?.url}
-                      alt={caption.images?.image_description}
-                      className="aspect-video w-full object-cover"
-                    />
-                    <div className="p-4">
-                      <p className="text-sm text-zinc-500">{caption.content}</p>
+              {/* Section heading */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', fontWeight: 700, color: '#1a1410', margin: 0 }}>Caption Gallery</h2>
+                <span style={{ fontSize: '0.78rem', color: '#7a6f63' }}>{captions.length} captions</span>
+              </div>
 
-                      <div className="mt-4 flex gap-2 border-t pt-4 dark:border-zinc-800">
-                        {/* UPVOTE BUTTON */}
-                        <button
-                          disabled={votingId === caption.id}
-                          onClick={() => handleVote(caption.id, 'up')}
-                          className={`flex-1 py-1 rounded border transition-all duration-200 ${
-                            currentVote === 1
-                              ? 'bg-emerald-500 border-emerald-600 text-white shadow-inner'
-                              : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-emerald-50 hover:border-emerald-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-emerald-950/30'
-                          }`}
-                        >
-                          ▲ Upvote
-                        </button>
+              {/* Gallery Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                {captions.map((caption, idx) => {
+                  const currentVote = userVotes[caption.id];
+                  return (
+                    <div
+                      key={caption.id}
+                      className="card card-anim"
+                      style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(26,20,16,0.06)', animationDelay: `${idx * 0.05}s` }}
+                    >
+                      <img
+                        src={caption.images?.url}
+                        alt={caption.images?.image_description}
+                        style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+                      />
+                      <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
+                        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.88rem', lineHeight: 1.55, color: '#1a1410', fontStyle: 'italic', margin: 0 }}>
+                          <span style={{ color: '#c8502a' }}>"</span>{caption.content}<span style={{ color: '#c8502a' }}>"</span>
+                        </p>
 
-                        {/* DOWNVOTE BUTTON */}
-                        <button
-                          disabled={votingId === caption.id}
-                          onClick={() => handleVote(caption.id, 'down')}
-                          className={`flex-1 py-1 rounded border transition-all duration-200 ${
-                            currentVote === -1
-                              ? 'bg-orange-500 border-orange-600 text-white shadow-inner'
-                              : 'bg-transparent border-zinc-200 text-zinc-600 hover:bg-orange-50 hover:border-orange-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-orange-950/30'
-                          }`}
-                        >
-                          ▼ Downvote
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid #e0d8cc' }}>
+                          <button
+                            className={`btn-vote up${currentVote === 1 ? ' active' : ''}`}
+                            disabled={votingId === caption.id}
+                            onClick={() => handleVote(caption.id, 'up')}
+                            style={{ flex: 1, padding: '0.45rem 0', borderRadius: 8, fontSize: '0.78rem', fontWeight: 500, border: '1.5px solid #e0d8cc', background: 'transparent', color: '#7a6f63', letterSpacing: '0.02em' }}
+                          >
+                            ▲ Upvote
+                          </button>
+                          <button
+                            className={`btn-vote down${currentVote === -1 ? ' active' : ''}`}
+                            disabled={votingId === caption.id}
+                            onClick={() => handleVote(caption.id, 'down')}
+                            style={{ flex: 1, padding: '0.45rem 0', borderRadius: 8, fontSize: '0.78rem', fontWeight: 500, border: '1.5px solid #e0d8cc', background: 'transparent', color: '#7a6f63', letterSpacing: '0.02em' }}
+                          >
+                            ▼ Downvote
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-        {/* Error toast */}
-        {error && (
-          <div
-            onClick={() => setError(null)}
-            className="fixed bottom-4 right-4 bg-red-100 border border-red-300 text-red-700 text-sm px-4 py-2 rounded-lg shadow cursor-pointer"
-          >
-            {error} <span className="ml-2 opacity-50">✕</span>
-          </div>
-        )}
-      </div>
-    </main>
+          {/* Error toast */}
+          {error && (
+            <div
+              onClick={() => setError(null)}
+              style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', background: '#fdf0ec', border: '1px solid #f5c5b0', color: '#c8502a', fontSize: '0.85rem', padding: '0.6rem 1rem', borderRadius: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', cursor: 'pointer' }}
+            >
+              {error} <span style={{ marginLeft: 8, opacity: 0.5 }}>✕</span>
+            </div>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
