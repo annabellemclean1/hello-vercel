@@ -80,6 +80,28 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const spreadByImage = (items: CaptionRow[]): CaptionRow[] => {
+    const result: CaptionRow[] = [];
+    const buckets = new Map<string, CaptionRow[]>();
+
+    // Group captions by image ID
+    items.forEach(item => {
+      const key = item.images?.id ?? 'unknown';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(item);
+    });
+
+    // Round-robin across image groups so same image never appears adjacent
+    const groups = Array.from(buckets.values());
+    let i = 0;
+    while (result.length < items.length) {
+      const group = groups[i % groups.length];
+      if (group.length > 0) result.push(group.shift()!);
+      i++;
+    }
+    return result;
+  };
+
   const fetchData = async (userId: string) => {
     setLoading(true);
     try {
@@ -105,8 +127,7 @@ export default function Home() {
         voteMap[v.caption_id] = v.vote_value;
       });
 
-      const shuffled = [...(captionData as unknown as CaptionRow[])].sort(() => Math.random() - 0.5);
-      setCaptions(shuffled || []);
+      setCaptions(spreadByImage((captionData as unknown as CaptionRow[]) || []));
       setUserVotes(voteMap);
     } catch (err: any) {
       setError(err.message);
@@ -223,7 +244,7 @@ export default function Home() {
           },
         }));
 
-      setCaptions(prev => [...newCaptions, ...prev]);
+      setCaptions(prev => spreadByImage([...newCaptions, ...prev]));
 
       // Reset upload UI
       setPreviewUrl(null);
