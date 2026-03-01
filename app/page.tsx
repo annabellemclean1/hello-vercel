@@ -6,9 +6,10 @@ import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 /**
  * Assignment #5: Image Upload + Caption Pipeline
- * - Added handleUpload: 4-step pipeline (presigned URL → S3 upload → register → generate captions)
- * - New captions from upload are prepended to the gallery and shown immediately
- * - All existing voting functionality preserved
+ * - Queries captions as primary unit, joins image data
+ * - 4-step upload pipeline with progress indicator
+ * - New captions pinned to top, existing gallery spread by image
+ * - Voting persists to Supabase with optimistic UI
  */
 
 interface CaptionRow {
@@ -21,7 +22,6 @@ interface CaptionRow {
   } | null;
 }
 
-// Upload step labels shown in the UI during processing
 const UPLOAD_STEPS = [
   'Generating upload URL...',
   'Uploading image...',
@@ -36,9 +36,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [votingId, setVotingId] = useState<string | null>(null);
-
-  // Upload state
-  const [uploadStep, setUploadStep] = useState<number | null>(null); // null = idle
+  const [uploadStep, setUploadStep] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,15 +81,11 @@ export default function Home() {
   const spreadByImage = (items: CaptionRow[]): CaptionRow[] => {
     const result: CaptionRow[] = [];
     const buckets = new Map<string, CaptionRow[]>();
-
-    // Group captions by image ID
     items.forEach(item => {
       const key = item.images?.id ?? 'unknown';
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(item);
     });
-
-    // Round-robin across image groups so same image never appears adjacent
     const groups = Array.from(buckets.values());
     let i = 0;
     while (result.length < items.length) {
@@ -123,9 +117,7 @@ export default function Home() {
       if (voteError) throw voteError;
 
       const voteMap: Record<string, number> = {};
-      voteData?.forEach(v => {
-        voteMap[v.caption_id] = v.vote_value;
-      });
+      voteData?.forEach(v => { voteMap[v.caption_id] = v.vote_value; });
 
       setCaptions(spreadByImage((captionData as unknown as CaptionRow[]) || []));
       setUserVotes(voteMap);
@@ -138,26 +130,20 @@ export default function Home() {
 
   const handleVote = async (captionId: string, direction: 'up' | 'down') => {
     if (!user) return;
-
     const newValue = direction === 'up' ? 1 : -1;
     const previousValue = userVotes[captionId];
-
     setUserVotes(prev => ({ ...prev, [captionId]: newValue }));
     setVotingId(captionId);
-
     try {
       const { error: voteError } = await supabase
         .from('caption_votes')
-        .upsert([
-          {
-            caption_id: captionId,
-            profile_id: user.id,
-            vote_value: newValue,
-            created_datetime_utc: new Date().toISOString(),
-            modified_datetime_utc: new Date().toISOString()
-          }
-        ], { onConflict: 'profile_id,caption_id' });
-
+        .upsert([{
+          caption_id: captionId,
+          profile_id: user.id,
+          vote_value: newValue,
+          created_datetime_utc: new Date().toISOString(),
+          modified_datetime_utc: new Date().toISOString()
+        }], { onConflict: 'profile_id,caption_id' });
       if (voteError) throw voteError;
     } catch (err: any) {
       setUserVotes(prev => ({ ...prev, [captionId]: previousValue }));
@@ -178,78 +164,53 @@ export default function Home() {
     const file = fileInputRef.current?.files?.[0];
     if (!file || !user) return;
 
-    // Get the JWT token for API auth
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    if (!token) {
-      setError('Not authenticated. Please sign in again.');
-      return;
-    }
+    if (!token) { setError('Not authenticated. Please sign in again.'); return; }
 
     const API = 'https://api.almostcrackd.ai';
-    const headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
     try {
-      // Step 1: Generate presigned URL
       setUploadStep(0);
       const presignRes = await fetch(`${API}/pipeline/generate-presigned-url`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ contentType: file.type }),
+        method: 'POST', headers, body: JSON.stringify({ contentType: file.type }),
       });
       if (!presignRes.ok) throw new Error('Failed to generate upload URL');
       const { presignedUrl, cdnUrl } = await presignRes.json();
 
-      // Step 2: Upload image bytes directly to S3
       setUploadStep(1);
       const uploadRes = await fetch(presignedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
+        method: 'PUT', headers: { 'Content-Type': file.type }, body: file,
       });
       if (!uploadRes.ok) throw new Error('Failed to upload image');
 
-      // Step 3: Register image URL in the pipeline
       setUploadStep(2);
       const registerRes = await fetch(`${API}/pipeline/upload-image-from-url`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ imageUrl: cdnUrl, isCommonUse: false }),
+        method: 'POST', headers, body: JSON.stringify({ imageUrl: cdnUrl, isCommonUse: false }),
       });
       if (!registerRes.ok) throw new Error('Failed to register image');
       const { imageId } = await registerRes.json();
 
-      // Step 4: Generate captions
       setUploadStep(3);
       const captionRes = await fetch(`${API}/pipeline/generate-captions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ imageId }),
+        method: 'POST', headers, body: JSON.stringify({ imageId }),
       });
       if (!captionRes.ok) throw new Error('Failed to generate captions');
       const newCaptionData = await captionRes.json();
 
-      // Prepend new captions to the gallery so they appear immediately
       const newCaptions: CaptionRow[] = (Array.isArray(newCaptionData) ? newCaptionData : [newCaptionData])
         .map((c: any) => ({
           id: c.id,
           content: c.content,
-          images: {
-            id: imageId,
-            url: cdnUrl,
-            image_description: c.image_description ?? '',
-          },
+          images: { id: imageId, url: cdnUrl, image_description: c.image_description ?? '' },
         }));
 
-      setCaptions(prev => spreadByImage([...newCaptions, ...prev]));
+      // New captions pinned to top, existing gallery stays spread
+      setCaptions(prev => [...newCaptions, ...spreadByImage(prev)]);
 
-      // Reset upload UI
       setPreviewUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -268,7 +229,7 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap');
         * { box-sizing: border-box; }
         body { margin: 0; background: #f5f0e8; }
         .card { transition: transform 0.2s, box-shadow 0.2s; }
@@ -286,6 +247,10 @@ export default function Home() {
         .file-zone:hover { border-color: #c8502a !important; color: #1a1410 !important; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .card-anim { animation: fadeUp 0.4s ease both; }
+        .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; opacity: 0; }
+        .hero-headline { animation: fadeUp 0.5s ease 0.2s both; opacity: 0; }
+        .hero-sub { animation: fadeUp 0.5s ease 0.3s both; opacity: 0; }
+        .hero-features { animation: fadeUp 0.5s ease 0.4s both; opacity: 0; }
       `}</style>
 
       <main style={{ minHeight: '100vh', background: '#f5f0e8', fontFamily: "'DM Sans', sans-serif", color: '#1a1410', padding: '0 2rem 4rem' }}>
@@ -315,38 +280,30 @@ export default function Home() {
           </header>
 
           {!user ? (
-            <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1.5rem' }}>
-                  The Internet's Caption Arena
-                </div>
-                <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.4rem, 6vw, 4.2rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.02em', color: '#1a1410', maxWidth: 760, marginBottom: '1.75rem' }}>
-                  Upload an image.<br />
-                  Get roasted by AI.<br />
-                  Vote on what's <em style={{ fontStyle: 'italic', color: '#c8502a' }}>actually</em> funny.
-                </h1>
-                <p style={{ fontSize: '1rem', color: '#7a6f63', maxWidth: 480, lineHeight: 1.7, marginBottom: '2.5rem', textAlign: 'center' }}>
-                  A gallery where every image gets a caption — and you decide which ones land.
-                </p>
-                <button
-                  onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })}
-                  style={{ background: '#1a1410', color: '#f5f0e8', border: 'none', padding: '0.9rem 2.2rem', borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}
-                >
-                  <span style={{ width: 18, height: 18, background: 'white', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#4285f4', flexShrink: 0 }}>G</span>
-                  Continue with Google
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', width: '100%', maxWidth: 320 }}>
-                  <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#7a6f63' }}>what you get</span>
-                  <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {['↑ Upvote captions', '↓ Downvote captions', '+ Upload images', '✦ AI-generated captions'].map(label => (
-                    <div key={label} style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.35rem 0.9rem', fontSize: '0.75rem', color: '#7a6f63' }}>
-                      {label}
-                    </div>
-                  ))}
-                </div>
+            /* ── Hero / Sign-in state ── */
+            <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem' }}>
+              <div className="hero-eyebrow" style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1.5rem' }}>
+                The Internet's Caption Arena
+              </div>
+              <h1 className="hero-headline" style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.4rem, 6vw, 4.2rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.02em', color: '#1a1410', maxWidth: 760, marginBottom: '1.75rem' }}>
+                Upload an image.<br />
+                Get roasted by AI.<br />
+                Vote on what's <em style={{ fontStyle: 'italic', color: '#c8502a' }}>actually</em> funny.
+              </h1>
+              <p className="hero-sub" style={{ fontSize: '1rem', color: '#7a6f63', maxWidth: 480, lineHeight: 1.7, marginBottom: '2.5rem' }}>
+                A gallery where every image gets a caption — and you decide which ones land.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', width: '100%', maxWidth: 320 }}>
+                <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
+                <span style={{ fontSize: '0.75rem', color: '#7a6f63' }}>what you get</span>
+                <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
+              </div>
+              <div className="hero-features" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {['↑ Upvote captions', '↓ Downvote captions', '+ Upload images', '✦ AI-generated captions'].map(label => (
+                  <div key={label} style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.35rem 0.9rem', fontSize: '0.75rem', color: '#7a6f63' }}>
+                    {label}
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
@@ -426,7 +383,6 @@ export default function Home() {
                         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.88rem', lineHeight: 1.55, color: '#1a1410', fontStyle: 'italic', margin: 0 }}>
                           <span style={{ color: '#c8502a' }}>"</span>{caption.content}<span style={{ color: '#c8502a' }}>"</span>
                         </p>
-
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid #e0d8cc' }}>
                           <button
                             className={`btn-vote up${currentVote === 1 ? ' active' : ''}`}
