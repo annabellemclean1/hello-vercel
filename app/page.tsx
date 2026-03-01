@@ -244,7 +244,7 @@ export default function Home() {
           },
         }));
 
-      setCaptions(prev => spreadByImage([...newCaptions, ...prev]));
+      setCaptions(prev => [...newCaptions, ...spreadByImage(prev)]);
 
       // Reset upload UI
       setPreviewUrl(null);
