@@ -315,7 +315,7 @@ export default function Home() {
           </header>
 
           {!user ? (
-
+            <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1.5rem' }}>
                   The Internet's Caption Arena
