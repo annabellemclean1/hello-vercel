@@ -318,12 +318,12 @@ export default function Home() {
             <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
                 {[
-                  { text: `"You're about as useful as a penguin in a desert."`, style: { top: '12%', left: '4%' } },
-                  { text: `"When the mural's more lit than your Zoom class."`, style: { top: '18%', right: '3%' } },
-                  { text: `"POV: you just remembered you have a 9am tomorrow."`, style: { bottom: '20%', left: '6%' } },
-                  { text: `"Main character syndrome activated."`, style: { bottom: '15%', right: '5%' } },
-                  { text: `"Monday energy, Friday expectations."`, style: { top: '50%', left: '1%' } },
-                  { text: `"I've seen better resilience from a sleep-deprived sloth."`, style: { top: '44%', right: '2%' } },
+                  { text: `"You're about as useful as a penguin in a desert."`, style: { top: '8%', left: '-8%' } },
+                  { text: `"When the mural's more lit than your Zoom class."`, style: { top: '14%', right: '-10%' } },
+                  { text: `"POV: you just remembered you have a 9am tomorrow."`, style: { bottom: '18%', left: '-10%' } },
+                  { text: `"Main character syndrome activated."`, style: { bottom: '12%', right: '-6%' } },
+                  { text: `"Monday energy, Friday expectations."`, style: { top: '48%', left: '-9%' } },
+                  { text: `"I've seen better resilience from a sleep-deprived sloth."`, style: { top: '42%', right: '-12%' } },
                 ].map((f, i) => (
                   <div key={i} style={{ position: 'absolute', background: 'white', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.5rem 1.1rem', fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.8rem', color: '#7a6f63', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(26,20,16,0.06)', opacity: 0.75, ...f.style }}>
                     {f.text}
