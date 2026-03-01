@@ -244,7 +244,7 @@ export default function Home() {
           },
         }));
 
-      setCaptions(prev => [...newCaptions, ...spreadByImage(prev)]);
+      setCaptions(prev => spreadByImage([...newCaptions, ...prev]));
 
       // Reset upload UI
       setPreviewUrl(null);
@@ -294,7 +294,7 @@ export default function Home() {
           {/* Header */}
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2rem 0 1.5rem', borderBottom: '1px solid #e0d8cc', marginBottom: '2.5rem' }}>
             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#1a1410' }}>
-              Almost <span style={{ color: '#c8502a' }}>Crackd</span>
+              Kinda <span style={{ color: '#c8502a' }}>Crackd</span>
             </div>
             {!user ? (
               <button
@@ -315,8 +315,53 @@ export default function Home() {
           </header>
 
           {!user ? (
-            <div style={{ textAlign: 'center', padding: '5rem 0', border: '1px solid #e0d8cc', borderRadius: 16, background: 'white' }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: '#7a6f63', fontStyle: 'italic' }}>Sign in to see images and vote.</p>
+            <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+                {[
+                  { text: '"You're about as useful as a penguin in a desert."', style: { top: '12%', left: '4%' } },
+                  { text: '"When the mural's more lit than your Zoom class."', style: { top: '18%', right: '3%' } },
+                  { text: '"POV: you just remembered you have a 9am tomorrow."', style: { bottom: '20%', left: '6%' } },
+                  { text: '"Main character syndrome activated."', style: { bottom: '15%', right: '5%' } },
+                  { text: '"Monday energy, Friday expectations."', style: { top: '50%', left: '1%' } },
+                  { text: '"I've seen better resilience from a sleep-deprived sloth."', style: { top: '44%', right: '2%' } },
+                ].map((f, i) => (
+                  <div key={i} style={{ position: 'absolute', background: 'white', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.5rem 1.1rem', fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.8rem', color: '#7a6f63', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(26,20,16,0.06)', opacity: 0.75, ...f.style }}>
+                    {f.text}
+                  </div>
+                ))}
+              </div>
+              <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1.5rem' }}>
+                  The Internet's Caption Arena
+                </div>
+                <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.4rem, 6vw, 4.2rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.02em', color: '#1a1410', maxWidth: 760, marginBottom: '1.75rem' }}>
+                  Upload an image.<br />
+                  Get roasted by AI.<br />
+                  Vote on what's <em style={{ fontStyle: 'italic', color: '#c8502a' }}>actually</em> funny.
+                </h1>
+                <p style={{ fontSize: '1rem', color: '#7a6f63', maxWidth: 480, lineHeight: 1.7, marginBottom: '2.5rem', textAlign: 'center' }}>
+                  A gallery where every image gets a caption — and you decide which ones land.
+                </p>
+                <button
+                  onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })}
+                  style={{ background: '#1a1410', color: '#f5f0e8', border: 'none', padding: '0.9rem 2.2rem', borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}
+                >
+                  <span style={{ width: 18, height: 18, background: 'white', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#4285f4', flexShrink: 0 }}>G</span>
+                  Continue with Google
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', width: '100%', maxWidth: 320 }}>
+                  <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#7a6f63' }}>what you get</span>
+                  <div style={{ flex: 1, height: 1, background: '#e0d8cc' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {['↑ Upvote captions', '↓ Downvote captions', '+ Upload images', '✦ AI-generated captions'].map(label => (
+                    <div key={label} style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.35rem 0.9rem', fontSize: '0.75rem', color: '#7a6f63' }}>
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <>
