@@ -315,21 +315,7 @@ export default function Home() {
           </header>
 
           {!user ? (
-            <div style={{ minHeight: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-                {[
-                  { text: `"You're about as useful as a penguin in a desert."`, style: { top: '8%', left: '2%' } },
-                  { text: `"When the mural's more lit than your Zoom class."`, style: { top: '14%', right: '2%' } },
-                  { text: `"POV: you just remembered you have a 9am tomorrow."`, style: { bottom: '18%', left: '2%' } },
-                  { text: `"Main character syndrome activated."`, style: { bottom: '12%', right: '2%' } },
-                  { text: `"Monday energy, Friday expectations."`, style: { top: '48%', left: '2%' } },
-                  { text: `"I've seen better resilience from a sleep-deprived sloth."`, style: { top: '42%', right: '2%' } },
-                ].map((f, i) => (
-                  <div key={i} style={{ position: 'absolute', background: 'rgba(245, 240, 232, 0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid #e0d8cc', borderRadius: 99, padding: '0.5rem 1.1rem', fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.8rem', color: '#7a6f63', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(26,20,16,0.08)', ...f.style }}>
-                    {f.text}
-                  </div>
-                ))}
-              </div>
+
               <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1.5rem' }}>
                   The Internet's Caption Arena
