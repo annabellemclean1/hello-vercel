@@ -141,8 +141,8 @@ export default function Home() {
           caption_id: captionId,
           profile_id: user.id,
           vote_value: newValue,
-          created_datetime_utc: new Date().toISOString(),
-          modified_datetime_utc: new Date().toISOString()
+          created_by_user_id: user.id,
+          modified_by_user_id: user.id,
         }], { onConflict: 'profile_id,caption_id' });
       if (voteError) throw voteError;
     } catch (err: any) {
