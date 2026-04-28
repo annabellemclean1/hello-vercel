@@ -111,7 +111,12 @@ export default function Home() {
       const voteMap: Record<string, number> = {};
       voteData?.forEach(v => { voteMap[v.caption_id] = v.vote_value; });
 
-      setCaptions(spreadByImage((captionData as unknown as CaptionRow[]) || []));
+      const spread = spreadByImage((captionData as unknown as CaptionRow[]) || []);
+      const sorted = [
+        ...spread.filter(c => voteMap[c.id] === undefined),
+        ...spread.filter(c => voteMap[c.id] !== undefined),
+      ];
+      setCaptions(sorted);
       setUserVotes(voteMap);
     } catch (err: any) {
       setError(err.message);
@@ -430,7 +435,16 @@ export default function Home() {
                           style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
                         />
                         <div style={{ padding: '1.1rem 1.2rem 1.2rem' }}>
-                          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', lineHeight: 1.6, color: '#1a1410', fontStyle: 'italic', margin: '0 0 1rem' }}>
+                          <p style={{
+                            fontFamily: "'Playfair Display', serif",
+                            fontSize: '1rem',
+                            lineHeight: 1.6,
+                            color: '#1a1410',
+                            fontStyle: 'italic',
+                            margin: '0 0 1rem',
+                            wordBreak: 'break-word',       // ← add this
+                            overflowWrap: 'break-word',    // ← and this
+                          }}>
                             <span style={{ color: '#c8502a' }}>"</span>{caption.content}<span style={{ color: '#c8502a' }}>"</span>
                           </p>
                           <div style={{ fontSize: '0.72rem', color: '#b0a898', marginBottom: '0.75rem' }}>
