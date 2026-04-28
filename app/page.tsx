@@ -116,6 +116,7 @@ export default function Home() {
         ...spread.filter(c => voteMap[c.id] === undefined),
         ...spread.filter(c => voteMap[c.id] !== undefined),
       ];
+
       setCaptions(sorted);
       setUserVotes(voteMap);
     } catch (err: any) {
@@ -129,7 +130,16 @@ export default function Home() {
     if (!user) return;
     const newValue = direction === 'up' ? 1 : -1;
     const previousValue = userVotes[captionId];
-    setUserVotes(prev => ({ ...prev, [captionId]: newValue }));
+
+    setUserVotes(prev => {
+      const updated = { ...prev, [captionId]: newValue };
+      setCaptions(caps => [
+        ...caps.filter(c => updated[c.id] === undefined),
+        ...caps.filter(c => updated[c.id] !== undefined),
+      ]);
+      return updated;
+    });
+
     setVotingId(captionId);
     try {
       const { error: voteError } = await supabase
@@ -249,6 +259,11 @@ export default function Home() {
         .signin-btn-main { transition: background 0.2s, transform 0.15s, box-shadow 0.2s; }
         .signin-btn-main:hover { background: #c8502a !important; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(200,80,42,0.3) !important; }
 
+        .caption-scroll::-webkit-scrollbar { width: 3px; }
+        .caption-scroll::-webkit-scrollbar-track { background: transparent; }
+        .caption-scroll::-webkit-scrollbar-thumb { background: #e0d8cc; border-radius: 99px; }
+        .caption-scroll::-webkit-scrollbar-thumb:hover { background: #c8b8a8; }
+
         @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .card-anim { animation: fadeUp 0.4s ease both; }
         .anim-1 { animation: fadeUp 0.5s ease 0.05s both; opacity: 0; }
@@ -288,7 +303,6 @@ export default function Home() {
             /* ── Sign-in / Landing state ── */
             <div style={{ maxWidth: 680, margin: '0 auto', padding: '3rem 0 5rem' }}>
 
-              {/* What is this app */}
               <div className="anim-1" style={{ marginBottom: '2.5rem' }}>
                 <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 900, lineHeight: 1.15, letterSpacing: '-0.02em', color: '#1a1410', margin: '0 0 1rem' }}>
                   AI-generated captions.<br />You decide what's funny.
@@ -298,7 +312,6 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* How it works */}
               <div className="anim-2" style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 14, padding: '1.5rem 1.75rem', marginBottom: '2rem' }}>
                 <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c8502a', marginBottom: '1rem' }}>How it works</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -317,7 +330,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Sign-in CTA */}
               <div className="anim-3" style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '0.85rem', color: '#7a6f63', marginBottom: '1rem' }}>
                   Sign in to upload images and vote on captions.
@@ -342,8 +354,6 @@ export default function Home() {
             <>
               {/* ── Upload Section ── */}
               <section style={{ background: 'white', border: '1px solid #e0d8cc', borderRadius: 16, padding: '2rem 2.25rem', marginBottom: '3rem', boxShadow: '0 2px 12px rgba(26,20,16,0.05)' }}>
-
-                {/* Section header */}
                 <div style={{ marginBottom: '1.25rem' }}>
                   <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', fontWeight: 700, color: '#1a1410', margin: '0 0 0.35rem' }}>
                     Generate Captions for Your Image
@@ -355,7 +365,6 @@ export default function Home() {
 
                 <div style={{ height: 1, background: '#f0ebe3', marginBottom: '1.5rem' }} />
 
-                {/* Drop zone */}
                 <label
                   className="upload-drop-zone"
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', border: '2px dashed #e0d8cc', borderRadius: 12, padding: '2.5rem 1.5rem', cursor: 'pointer', background: previewUrl ? '#fdf8f4' : 'transparent', marginBottom: '1.25rem', textAlign: 'center' }}
@@ -385,7 +394,6 @@ export default function Home() {
                   />
                 </label>
 
-                {/* Generate button */}
                 <button
                   className="btn-generate"
                   onClick={handleUpload}
@@ -395,7 +403,6 @@ export default function Home() {
                   {isUploading ? UPLOAD_STEPS[uploadStep!] : 'Generate Captions →'}
                 </button>
 
-                {/* Progress steps */}
                 {isUploading && (
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                     {UPLOAD_STEPS.map((label, i) => (
@@ -435,18 +442,17 @@ export default function Home() {
                           style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
                         />
                         <div style={{ padding: '1.1rem 1.2rem 1.2rem' }}>
-                          <p style={{
-                            fontFamily: "'Playfair Display', serif",
-                            fontSize: '1rem',
-                            lineHeight: 1.6,
-                            color: '#1a1410',
-                            fontStyle: 'italic',
-                            margin: '0 0 1rem',
-                            wordBreak: 'break-word',       // ← add this
-                            overflowWrap: 'break-word',    // ← and this
-                          }}>
-                            <span style={{ color: '#c8502a' }}>"</span>{caption.content}<span style={{ color: '#c8502a' }}>"</span>
-                          </p>
+
+                          {/* ── Scrollable caption text ── */}
+                          <div
+                            className="caption-scroll"
+                            style={{ maxHeight: '5.5rem', overflowY: 'auto', marginBottom: '1rem' }}
+                          >
+                            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', lineHeight: 1.6, color: '#1a1410', fontStyle: 'italic', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                              <span style={{ color: '#c8502a' }}>"</span>{caption.content}<span style={{ color: '#c8502a' }}>"</span>
+                            </p>
+                          </div>
+
                           <div style={{ fontSize: '0.72rem', color: '#b0a898', marginBottom: '0.75rem' }}>
                             Vote for this caption:
                           </div>
