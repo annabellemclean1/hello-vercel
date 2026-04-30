@@ -131,14 +131,7 @@ export default function Home() {
     const newValue = direction === 'up' ? 1 : -1;
     const previousValue = userVotes[captionId];
 
-    setUserVotes(prev => {
-      const updated = { ...prev, [captionId]: newValue };
-      setCaptions(caps => [
-        ...caps.filter(c => updated[c.id] === undefined),
-        ...caps.filter(c => updated[c.id] !== undefined),
-      ]);
-      return updated;
-    });
+    setUserVotes(prev => ({ ...prev, [captionId]: newValue }));
 
     setVotingId(captionId);
     try {
